@@ -10,12 +10,17 @@
 //!   (相対パス・拡張子補完 `.js`/`.json`・ディレクトリ `index`・
 //!   `package.json` の `main`・`node_modules` 探索)を、実ファイルシステム
 //!   アクセス抜きで単体テストできる純粋関数として実装。
+//! - [`event_loop`]: イベントループの順序モデル(next-tick キュー →
+//!   マイクロタスクキュー → タイマーフェーズの実行順序規則)を、実時間や
+//!   tokio に載せる前の決定的な純粋キューロジックとして実装。
 //!
 //! JavaScript の実行そのもの(V8 相当)は本クレートのスコープ外。
 //! 将来的な RTypeScript との連携構想は `CLAUDE.md` の設計メモを参照。
 
 #![deny(unsafe_code)]
 
+pub mod event_loop;
 pub mod resolve;
 
+pub use event_loop::{EventLoop, Executed, TaskId, TaskKind};
 pub use resolve::{resolve, FileSystem, MapFileSystem, ResolveError};
