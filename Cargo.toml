@@ -1,0 +1,16 @@
+[package]
+name = "rnodejs"
+description = "RNode.js: a from-scratch Rust reimplementation of Node.js core concepts (no reuse of the existing Node.js implementation), part of the RFrontEnd ecosystem. v0.1.0 focuses on the conceptual skeleton of the module system (CommonJS-style require path resolution as pure, filesystem-agnostic functions) and the event loop (timer/next-tick queue ordering model)."
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.75"
+authors = ["RNode.js Contributors"]
+license = "Apache-2.0 OR MIT"
+repository = "https://github.com/aon-co-jp/RNode.js"
+
+[lints.rust]
+unsafe_code = "deny"
+
+[dependencies]
+
+[dev-dependencies]
