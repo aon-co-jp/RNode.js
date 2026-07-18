@@ -1,6 +1,6 @@
 [package]
 name = "rnodejs"
-description = "RNode.js: a from-scratch Rust reimplementation of Node.js core concepts (no reuse of the existing Node.js implementation), part of the RFrontEnd ecosystem. Implements the module system (CommonJS-style require path resolution, both as pure filesystem-agnostic logic and a std::fs-backed FileSystem), the event loop (timer/next-tick/microtask queue ordering model), a real-time TokioDriver (feature tokio-driver) that drives the deterministic queue logic with tokio timers, and an RPoem integration bridge stub (feature rpoem-adapter)."
+description = "RNode.js: a from-scratch Rust reimplementation of Node.js core concepts (no reuse of the existing Node.js implementation), part of the RFrontEnd ecosystem. Implements the module system (CommonJS-style require path resolution, both as pure filesystem-agnostic logic and a std::fs-backed FileSystem), a fs core-module equivalent (sync read/write/mkdir/readdir/stat/remove backed by real std::fs I/O), the event loop (timer/next-tick/microtask queue ordering model), a real-time TokioDriver (feature tokio-driver) that drives the deterministic queue logic with tokio timers, and an RPoem integration bridge stub (feature rpoem-adapter)."
 version = "0.1.0"
 edition = "2021"
 rust-version = "1.75"

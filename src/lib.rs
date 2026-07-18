@@ -13,6 +13,9 @@
 //! - [`event_loop`]: イベントループの順序モデル(next-tick キュー →
 //!   マイクロタスクキュー → タイマーフェーズの実行順序規則)を、実時間や
 //!   tokio に載せる前の決定的な純粋キューロジックとして実装。
+//! - [`fs`]: Node の `fs`(同期 API)相当。`std::fs` を薄くラップした
+//!   実 I/O(読み書き・ディレクトリ一覧・stat・削除)。v0.2.0 で追加
+//!   (2026-07-19)。
 //!
 //! JavaScript の実行そのもの(V8 相当)は本クレートのスコープ外。
 //! 将来的な RTypeScript との連携構想は `CLAUDE.md` の設計メモを参照。
@@ -20,6 +23,7 @@
 #![deny(unsafe_code)]
 
 pub mod event_loop;
+pub mod fs;
 pub mod resolve;
 pub mod runtime;
 
@@ -27,4 +31,5 @@ pub mod runtime;
 pub mod rpoem_adapter;
 
 pub use event_loop::{EventLoop, Executed, TaskId, TaskKind};
+pub use fs::{FsError, Metadata};
 pub use resolve::{resolve, FileSystem, MapFileSystem, ResolveError, StdFileSystem};
