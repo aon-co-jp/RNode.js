@@ -1,6 +1,6 @@
 [package]
 name = "rnodejs"
-description = "RNode.js: a from-scratch Rust reimplementation of Node.js core concepts (no reuse of the existing Node.js implementation), part of the RFrontEnd ecosystem. v0.1.0 focuses on the conceptual skeleton of the module system (CommonJS-style require path resolution as pure, filesystem-agnostic functions) and the event loop (timer/next-tick queue ordering model)."
+description = "RNode.js: a from-scratch Rust reimplementation of Node.js core concepts (no reuse of the existing Node.js implementation), part of the RFrontEnd ecosystem. Implements the module system (CommonJS-style require path resolution, both as pure filesystem-agnostic logic and a std::fs-backed FileSystem), the event loop (timer/next-tick/microtask queue ordering model), a real-time TokioDriver (feature tokio-driver) that drives the deterministic queue logic with tokio timers, and an RPoem integration bridge stub (feature rpoem-adapter)."
 version = "0.1.0"
 edition = "2021"
 rust-version = "1.75"
@@ -12,9 +12,15 @@ repository = "https://github.com/aon-co-jp/RNode.js"
 unsafe_code = "deny"
 
 [features]
-# RPoem/tokio 統合アダプタ(v0.1.0 では設計スタブのみ)。
-# 実装時も tokio 等への依存はこの feature 配下に閉じ込め、コアは依存ゼロを保つ。
+# RPoem 統合アダプタ(コアの LoopDriver/EventLoop に対する薄いブリッジ層)。
+# RPoem 本体への実依存は追加しない(インターフェースのみ)。
 rpoem-adapter = []
+# 実時間駆動の LoopDriver(TokioDriver)。tokioホストアプリケーション
+# (RPoem等)からの利用を想定した名前だが、実装(2026-07-18修正後)は
+# std::thread::sleepのみで完結しtokio自体には依存しない——featureとして
+# 分離しているのは将来tokio固有の統合が必要になった場合の拡張余地を
+# 残すため。
+tokio-driver = []
 
 [dependencies]
 

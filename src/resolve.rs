@@ -273,6 +273,61 @@ impl FileSystem for MapFileSystem {
     }
 }
 
+/// 実ファイルシステム(`std::fs`)に接続する [`FileSystem`] 実装。
+///
+/// [`MapFileSystem`] がテスト用のインメモリ実装であるのに対し、こちらは
+/// `resolve()` を実際のディスク上のファイルに対して使うための実装。
+/// パスはこのクレートの解決ロジックが生成する POSIX 風のスラッシュ区切りの
+/// 文字列だが、`std::fs` はスラッシュ区切りのパスを Windows 上でも
+/// そのまま受け付けるため、特別な変換は行わない
+/// (`from_dir` には呼び出し側があらかじめ OS 上の実在パスを渡すこと)。
+///
+/// `package.json` の `main` フィールド抽出は、本クレートが依存クレート
+/// ゼロを保つ方針のため、フル JSON パーサではなく `"main"` キーだけを
+/// 拾う最小限のアドホックな文字列走査で実装している(エスケープされた
+/// 引用符などを含む値には対応しない)。
+#[derive(Debug, Default, Clone, Copy)]
+pub struct StdFileSystem;
+
+impl StdFileSystem {
+    /// 新しい `std::fs` ベースのファイルシステムを作る。
+    pub fn new() -> Self {
+        Self
+    }
+}
+
+impl FileSystem for StdFileSystem {
+    fn is_file(&self, path: &str) -> bool {
+        std::fs::metadata(path).map(|m| m.is_file()).unwrap_or(false)
+    }
+
+    fn is_dir(&self, path: &str) -> bool {
+        std::fs::metadata(path).map(|m| m.is_dir()).unwrap_or(false)
+    }
+
+    fn package_main(&self, dir: &str) -> Option<String> {
+        let pkg_path = format!("{}/package.json", dir.trim_end_matches('/'));
+        let content = std::fs::read_to_string(&pkg_path).ok()?;
+        extract_json_string_field(&content, "main")
+    }
+}
+
+/// `json` テキストの中から `"key": "value"` 形式のトップレベル/ネスト非依存な
+/// 文字列フィールドを 1 つ拾う最小限のアドホックパーサ。
+/// `package.json` の `main` フィールドのみを想定した簡易実装であり、
+/// エスケープされた引用符やネストしたオブジェクト中の同名キーの区別などは
+/// 扱わない。
+fn extract_json_string_field(json: &str, key: &str) -> Option<String> {
+    let pattern = format!("\"{key}\"");
+    let key_pos = json.find(&pattern)?;
+    let after_key = &json[key_pos + pattern.len()..];
+    let colon_pos = after_key.find(':')?;
+    let after_colon = after_key[colon_pos + 1..].trim_start();
+    let after_colon = after_colon.strip_prefix('"')?;
+    let end = after_colon.find('"')?;
+    Some(after_colon[..end].to_string())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -404,5 +459,94 @@ mod tests {
         assert!(paths.contains(&"/app/node_modules".to_string()));
         assert!(paths.contains(&"/node_modules".to_string()));
         assert!(!paths.iter().any(|p| p.ends_with("node_modules/node_modules")));
+    }
+
+    /// テスト用の一時ディレクトリ。`Drop` で自動クリーンアップする。
+    struct TempDir {
+        path: std::path::PathBuf,
+    }
+
+    impl TempDir {
+        fn new(name: &str) -> Self {
+            let mut path = std::env::temp_dir();
+            path.push(format!(
+                "rnodejs-resolve-test-{name}-{}-{}",
+                std::process::id(),
+                name.len()
+            ));
+            let _ = std::fs::remove_dir_all(&path);
+            std::fs::create_dir_all(&path).expect("create temp dir");
+            Self { path }
+        }
+
+        fn slash_path(&self) -> String {
+            self.path.to_string_lossy().replace('\\', "/")
+        }
+    }
+
+    impl Drop for TempDir {
+        fn drop(&mut self) {
+            let _ = std::fs::remove_dir_all(&self.path);
+        }
+    }
+
+    #[test]
+    fn std_file_system_resolves_real_relative_file() {
+        let tmp = TempDir::new("relative-file");
+        let root = tmp.slash_path();
+        std::fs::create_dir_all(format!("{root}/lib")).unwrap();
+        std::fs::write(format!("{root}/lib/util.js"), b"module.exports = {};").unwrap();
+
+        let fs = StdFileSystem::new();
+        let got = resolve("./lib/util", &root, &fs).unwrap();
+        assert_eq!(got, format!("{root}/lib/util.js"));
+    }
+
+    #[test]
+    fn std_file_system_resolves_directory_index() {
+        let tmp = TempDir::new("dir-index");
+        let root = tmp.slash_path();
+        std::fs::create_dir_all(format!("{root}/widgets")).unwrap();
+        std::fs::write(format!("{root}/widgets/index.js"), b"module.exports = {};").unwrap();
+
+        let fs = StdFileSystem::new();
+        let got = resolve("./widgets", &root, &fs).unwrap();
+        assert_eq!(got, format!("{root}/widgets/index.js"));
+    }
+
+    #[test]
+    fn std_file_system_resolves_package_main() {
+        let tmp = TempDir::new("package-main");
+        let root = tmp.slash_path();
+        std::fs::create_dir_all(format!("{root}/mylib/src")).unwrap();
+        std::fs::write(
+            format!("{root}/mylib/package.json"),
+            b"{\n  \"name\": \"mylib\",\n  \"main\": \"./src/entry.js\"\n}",
+        )
+        .unwrap();
+        std::fs::write(format!("{root}/mylib/src/entry.js"), b"module.exports = {};").unwrap();
+
+        let fs = StdFileSystem::new();
+        let got = resolve("./mylib", &root, &fs).unwrap();
+        assert_eq!(got, format!("{root}/mylib/src/entry.js"));
+    }
+
+    #[test]
+    fn std_file_system_reports_not_found_for_missing_file() {
+        let tmp = TempDir::new("missing");
+        let root = tmp.slash_path();
+        let fs = StdFileSystem::new();
+        let err = resolve("./nope", &root, &fs).unwrap_err();
+        assert!(matches!(err, ResolveError::NotFound { .. }));
+    }
+
+    #[test]
+    fn extract_json_string_field_finds_main() {
+        let json = "{\"name\": \"x\", \"main\": \"./index.js\"}";
+        assert_eq!(
+            extract_json_string_field(json, "main"),
+            Some("./index.js".to_string())
+        );
+        assert_eq!(extract_json_string_field(json, "missing"), None);
     }
 }

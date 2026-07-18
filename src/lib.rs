@@ -27,4 +27,4 @@ pub mod runtime;
 pub mod rpoem_adapter;
 
 pub use event_loop::{EventLoop, Executed, TaskId, TaskKind};
-pub use resolve::{resolve, FileSystem, MapFileSystem, ResolveError};
+pub use resolve::{resolve, FileSystem, MapFileSystem, ResolveError, StdFileSystem};
