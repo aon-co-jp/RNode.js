@@ -21,6 +21,10 @@
 
 pub mod event_loop;
 pub mod resolve;
+pub mod runtime;
+
+#[cfg(feature = "rpoem-adapter")]
+pub mod rpoem_adapter;
 
 pub use event_loop::{EventLoop, Executed, TaskId, TaskKind};
 pub use resolve::{resolve, FileSystem, MapFileSystem, ResolveError};

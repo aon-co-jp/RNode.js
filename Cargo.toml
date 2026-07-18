@@ -11,6 +11,11 @@ repository = "https://github.com/aon-co-jp/RNode.js"
 [lints.rust]
 unsafe_code = "deny"
 
+[features]
+# RPoem/tokio 統合アダプタ(v0.1.0 では設計スタブのみ)。
+# 実装時も tokio 等への依存はこの feature 配下に閉じ込め、コアは依存ゼロを保つ。
+rpoem-adapter = []
+
 [dependencies]
 
 [dev-dependencies]
